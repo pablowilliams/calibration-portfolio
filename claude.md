@@ -34,6 +34,8 @@ These are non-negotiable. Every correction I had to make to the agent's code inv
 
 ## Portfolio Rules
 
+> **Correction (November 2026).** Rules 9 to 11 below are the rules as I originally wrote them. The backtest that was actually executed does not follow them: `run_backtest()` gives every stock with predicted probability above 0.5 a half-Kelly stake, `0.5 * max(0, 2p - 1)`, normalises the stakes to sum to one, and charges 10 basis points on one-way turnover. Every reported result comes from that code. I missed the mismatch at the time and am recording it here rather than rewriting the rules after the fact.
+
 9. **Top quintile (~91 stocks) by predicted probability each month.** I considered deciles but the signal is too weak to support finer sorting.
 
 10. **Equal-weighted, not Kelly-proportional.** With AUC barely above 0.50, Kelly fractions would amplify estimation noise into extreme positions. Equal weighting is more robust.

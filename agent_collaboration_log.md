@@ -124,3 +124,9 @@ The agent accelerated the technical implementation by an estimated 15–20 hours
 ---
 
 *This log was maintained continuously throughout the project.*
+
+---
+
+## Correction (November 2026)
+
+Entry 7 in Section 1 and entry 9 in Section 2 describe a top-quintile, equal-weighted portfolio with 5 bps per leg. That design was agreed but not implemented. The backtest code that produced every reported result uses half-Kelly weights, `0.5 * max(0, 2p - 1)`, over all stocks with predicted probability above 0.5, normalised to sum to one, with 10 bps charged on one-way turnover. The spot checks in Section 2, entry 9, were therefore made against a rule the code does not use and do not validate the reported portfolio returns. I found the mismatch when preparing the working paper and have left the original entries unchanged so the record stays honest.

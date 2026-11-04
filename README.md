@@ -4,7 +4,7 @@
 
 Most machine learning models in finance are evaluated on accuracy or AUC, but these metrics say nothing about whether a model's *confidence* is trustworthy. A model that predicts 70% probability of outperformance when the true rate is 55% might score well on accuracy, yet its overconfidence would lead a Kelly-sizing framework to commit six times more capital than warranted. In high-stakes portfolio allocation, this kind of probability error is far more damaging than getting a few binary labels wrong.
 
-This project asks a simple question: **if you optimise a model for calibration quality (ECE) instead of accuracy, do the resulting probability estimates actually produce better portfolios?** The answer, it turns out, is nuanced. The calibration-optimised portfolio does outperform the accuracy-optimised one directionally, but the effect is not statistically significant over a four-year test window with near-random signal strength. The more interesting finding is that the calibration advantage appears to come from *how* the model was tuned, not from *what* features it was given.
+This project asks a simple question: **if you optimise a model for calibration quality (ECE) instead of accuracy, do the resulting probability estimates actually produce better portfolios?** The short answer is no, not detectably. The calibration-selected portfolio earned more than the accuracy-selected one (68.1% against 63.4% over 2021 to 2024), but the difference is not statistically significant (p = 0.294), and neither portfolio beat an equal-weighted portfolio of the same stocks or SPY. With discrimination close to chance, a low calibration error mostly reflects predictions that stay close to the base rate.
 
 ---
 
@@ -12,7 +12,8 @@ This project asks a simple question: **if you optimise a model for calibration q
 
 **Universe**: 457 S&P 500 equities, 82,260 stock-month observations, January 2010 to December 2024  
 **Primary Metric**: Expected Calibration Error (ECE, M = 10 equal-width bins)  
-**Research Question**: Does optimising for ECE over accuracy produce better Kelly-sized portfolios?
+**Research Question**: Does optimising for ECE over accuracy produce better Kelly-sized portfolios?  
+**Paper**: Williams, P. (2026). *Does Calibration Pay? Calibration-Optimised and Accuracy-Optimised Classifiers in a Monthly Equity Outperformance Strategy.* Working paper. PDF in [`paper/`](paper/).
 
 ---
 
@@ -20,8 +21,8 @@ This project asks a simple question: **if you optimise a model for calibration q
 
 ```bash
 # Clone and install
-git clone https://github.com/pablowilliams/MSIN0097-Calibration-Portfolio.git
-cd MSIN0097-Calibration-Portfolio
+git clone https://github.com/pablowilliams/calibration-portfolio.git
+cd calibration-portfolio
 pip install -r requirements.txt
 
 # Run the full pipeline (takes ~55 minutes due to yfinance downloads and Optuna tuning)
@@ -66,7 +67,9 @@ Train                  Validation             Test (touched once)
 
 ### The Portfolio
 
-Each month, I ranked stocks by predicted outperformance probability and selected the top quintile (~91 stocks) into an equal-weighted portfolio. I used equal weighting rather than Kelly-proportional sizing because the signal is so weak (AUC ~ 0.52) that Kelly fractions would amplify noise into extreme positions. Transaction costs of 5 basis points per leg are applied at each rebalance.
+Each month, every stock receives a half-Kelly stake, `0.5 * max(0, 2p - 1)`, from its predicted outperformance probability `p`, so only stocks with `p > 0.5` are held. Stakes are normalised to sum to one (long only), the portfolio is rebalanced monthly, and transaction costs of 10 basis points are charged on one-way turnover. This is the rule implemented in `run_backtest()` and used for every reported result.
+
+> **Correction (November 2026).** Earlier versions of this README, `claude.md` and the collaboration log described a top-quintile, equal-weighted portfolio with 5 bps per leg. That rule was planned but never implemented: the executed notebook uses the half-Kelly rule above. All figures in this repository come from the half-Kelly code. The benchmarks (equal weight and SPY) are not charged transaction costs.
 
 ---
 
@@ -94,9 +97,9 @@ Each month, I ranked stocks by predicted outperformance probability and selected
 
 ### Hypothesis Verdicts
 
-**H1** (calibration-best beats accuracy-best): Directionally supported (Sharpe 0.77 > 0.71), but the paired t-test gives p = 0.294 with Cohen's d = 0.080 and a bootstrap CI [-0.080, 0.204] crossing zero. I cannot reject the null. The effect reverses during the 2022 bear market, suggesting any benefit is regime-dependent.
+**H1** (calibration-best beats accuracy-best): Not supported. The point estimate favours the calibration-best portfolio (Sharpe 0.77 against 0.71), but the paired t-test gives p = 0.294 with Cohen's d = 0.080 and a bootstrap CI [-0.080, 0.204] crossing zero. I cannot reject the null. The effect reverses during the 2022 bear market, suggesting any benefit is regime-dependent.
 
-**H2** (engineered features improve calibration): Mixed. Removing Elo worsens ECE by 0.003, suggesting it captures genuine persistence. Removing Bayesian has negligible effect. Removing Macro actually *improves* ECE, likely because FRED's revised vintages introduce look-ahead bias. The full model (ECE = 0.026) barely outperforms the technical-only baseline (0.028), so the calibration advantage comes from ECE-targeted tuning rather than the novel features.
+**H2** (engineered features improve calibration): Mixed. Removing Elo worsens ECE by 0.003, suggesting it captures genuine persistence. Removing Bayesian has negligible effect. Removing Macro actually *improves* ECE, likely because FRED's revised vintages introduce look-ahead bias. The full model (ECE = 0.026) is only marginally better than the model without the technical pillar (0.028). Each configuration was trained once, with no error bars, so none of these differences should be treated as established.
 
 ### What Went Wrong
 
@@ -107,10 +110,11 @@ The most damaging limitation is the 46% ECE degradation from validation (0.026) 
 ## Project Structure
 
 ```
-MSIN0097-Calibration-Portfolio/
+calibration-portfolio/
   PythonFinance.ipynb             # End-to-end pipeline (81 cells, ~55 min runtime)
   agent_collaboration_log.md      # AI-human collaboration audit (48 entries)
   claude.md                       # Agent runbook with temporal discipline rules
+  paper/                          # Working paper (PDF and LaTeX source)
   requirements.txt                # Python 3.10+ dependencies
   .gitignore
   figures/                        # 28 auto-generated PNGs
